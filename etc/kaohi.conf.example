@@ -1,0 +1,24 @@
+{
+	"log_dir": "/var/log/kaohi",
+	"log_level": "DEBUG",
+
+	"configs": [
+		{
+			"name": "test1",
+			"type": "tail",
+			"file_paths": [
+				"/var/log/syslog",
+				"/var/log/faillog"
+			]
+		},
+
+		{
+			"name": "test2",
+			"type": "command",
+			"cmds": [
+				"/bin/ls",
+				"ifconfig"
+			]
+		}
+	]
+}
