@@ -31,6 +31,8 @@ import (
 
 const (
 	KAOHI_CONFIG_FILE = "/etc/kaohi.conf"
+
+	KAOHI_LISTEN_ADDR = "127.0.0.1:6688"
 )
 
 var (
@@ -63,4 +65,15 @@ var (
 	ErrCreateLogDir = errors.New("Could not create log directory")
 
 	ErrCreateLogFile = errors.New("Could not create log file")
+
+	// errors related with command listener
+	ErrResolveAddr = errors.New("Could not resolve address for listen")
+
+	ErrListenFaield = errors.New("Could not listen on specified address")
+
+	ErrConnClosing   = errors.New("use of closed network connection")
+
+	ErrWriteBlocking = errors.New("write packet was blocking")
+
+	ErrReadBlocking  = errors.New("read packet was blocking")
 )

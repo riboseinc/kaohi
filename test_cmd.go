@@ -26,81 +26,21 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
+ 	"fmt"
+ 	"os"
 )
-
-type KaohiContext struct {
-	config kConfig
-	logger kLogger
-}
-
-// init kaohi context
-func (ctx *KaohiContext) Init() error {
-	var err error
-
-	// init config
-	if err = ctx.config.InitConfig(KAOHI_CONFIG_FILE); err != nil {
-		return err
-	}
-
-	// init logging
-	if err = InitLogger(ctx.config.GetLogDir(), ctx.config.GetLogLevel()); err != nil {
-		return err
-	}
-
-	DEBUG_INFO("Initializing Kaohi context")
-
-	// init command listener
-	if err = InitCmdListener(); err != nil {
-		return err;
-	}
-
-	return nil
-}
-
-// finalize kaohi context
-func (ctx *KaohiContext) Finalize() {
-	// finalize command listener
-	FinalizeCmdListener()
-}
 
 // main function
 func main() {
-	var ctx KaohiContext
+	InitLogger("/tmp", "debug")
 
-	// check sudo privilege
-	if ok, err := checkPrivileges(); !ok {
+	// initialize command listener
+	err := InitCmdListener()
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	// create signal channel
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
-
-	// init context
-	if err := ctx.Init(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	// wait until TERM signal has received
-	for {
-		select {
-		case killSignal := <-interrupt:
-			if killSignal == os.Interrupt {
-				DEBUG_INFO("Interrupt has occurred by system signal")
-				break
-			}
-
-			DEBUG_INFO("Kill signal has occurred")
-			break
-		}
-	}
-
-	// finalize context
-	ctx.Finalize()
+	// finalize cmd listener
+	FinalizeCmdListener()
 }

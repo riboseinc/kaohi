@@ -30,6 +30,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"path/filepath"
 )
 
 // Service constants
@@ -43,11 +44,11 @@ func executablePath(name string) (string, error) {
 	if path, err := exec.LookPath(name); err == nil {
 		_, err := os.Stat(path)
 		if os.IsNotExist(err) {
-			return execPath()
+			return filepath.Abs(os.Args[0])
 		}
 		return path, nil
 	}
-	return execPath()
+	return filepath.Abs(os.Args[0])
 }
 
 // Check root rights to use system service
