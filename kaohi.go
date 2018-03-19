@@ -27,117 +27,18 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 )
-
-const (
-	name        = "kaohi"
-	description = "kaʻohi log collection daemon"
-	port = ":6699"
-
-	log_dir = "/var/log/kaohi"
-)
-
-type kService struct {
-	Daemon
-}
 
 type KaohiContext struct {
 	config kConfig
 	logger kLogger
 }
 
-// dependencies that are NOT required by the service, but might be used
-var dependencies = []string{"dummy.service"}
-var stdlog, errlog *log.Logger
-
-// Manage by daemon commands or run the daemon
-func (service *kService) Manage() (string, error) {
-	usage := "Usage: kaohi install | remove | start | stop | status"
-
-	// if received any kind of command, do it
-	if len(os.Args) > 1 {
-		command := os.Args[1]
-		switch command {
-		case "install":
-			return service.Install()
-		case "remove":
-			return service.Remove()
-		case "start":
-			return service.Start()
-		case "stop":
-			return service.Stop()
-		case "status":
-			return service.Status()
-		default:
-			return usage, nil
-		}
-	}
-
-	// Do something, call your goroutines, etc
-
-	// Set up channel on which to send signal notifications.
-	// We must use a buffered channel or risk missing the signal
-	// if we're not ready to receive when the signal is sent.
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
-
-	// Set up listener for defined host and port
-	listener, err := net.Listen("tcp", port)
-	if err != nil {
-		return "Possibly was a problem with the port binding", err
-	}
-
-	// set up channel on which to send accepted connections
-	listen := make(chan net.Conn, 100)
-	go acceptConnection(listener, listen)
-
-	// loop work cycle with accept connections or interrupt
-	// by system signal
-	for {
-		select {
-		case conn := <-listen:
-			go handleClient(conn)
-		case killSignal := <-interrupt:
-			stdlog.Println("Got signal:", killSignal)
-			stdlog.Println("Stoping listening on ", listener.Addr())
-			listener.Close()
-			if killSignal == os.Interrupt {
-				return "Daemon was interrupted by system signal", nil
-			}
-			return "Daemon was killed", nil
-		}
-	}
-}
-
-// Accept a client connection and collect it in a channel
-func acceptConnection(listener net.Listener, listen chan<- net.Conn) {
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			continue
-		}
-		listen <- conn
-	}
-}
-
-func handleClient(client net.Conn) {
-	for {
-		buf := make([]byte, 4096)
-		numbytes, err := client.Read(buf)
-		if numbytes == 0 || err != nil {
-			return
-		}
-		client.Write(buf[:numbytes])
-	}
-}
-
 // init kaohi context
-func (ctx *KaohiContext) initKaohiCtx() error {
+func (ctx *KaohiContext) Init() error {
 	var err error
 
 	// init config
@@ -150,9 +51,43 @@ func (ctx *KaohiContext) initKaohiCtx() error {
 		return err
 	}
 
-	
+	DEBUG_INFO("Initializing Kaohi context")
+
+	// init command listener
+	if err = InitCmdListener(); err != nil {
+		return err;
+	}
 
 	return nil
+}
+
+// finalize kaohi context
+func (ctx *KaohiContext) Finalize() {
+	DEBUG_INFO("Finalizing Kaohi context")
+
+	// finalize command listener
+	FinalizeCmdListener()
+}
+
+// loop until interupt has occurred
+func WaitForSignal() {
+	// create signal channel
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	// wait until TERM signal has received
+	for {
+		select {
+		case killSignal := <-interrupt:
+			if killSignal == os.Interrupt {
+				DEBUG_INFO("Interrupt has occurred by system signal")
+				return
+			}
+
+			DEBUG_INFO("Kill signal has occurred")
+			return
+		}
+	}
 }
 
 // main function
@@ -166,8 +101,14 @@ func main() {
 	}
 
 	// init context
-	if err := ctx.initKaohiCtx(); err != nil {
+	if err := ctx.Init(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	// main loop
+	WaitForSignal()
+
+	// finalize context
+	ctx.Finalize()
 }

@@ -26,40 +26,45 @@
 package main
 
 import (
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
-	"path/filepath"
+ 	"os"
+ 	"fmt"
+	"os/signal"
+	"syscall"
 )
 
-// Service constants
-const (
-	success = "\t\t\t\t\t[  \033[32mOK\033[0m  ]" // Show colored "OK"
-	failed  = "\t\t\t\t\t[\033[31mFAILED\033[0m]" // Show colored "FAILED"
-)
+ // loop until interupt has occurred
+func WaitForSignal() {
+	// create signal channel
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
 
-// Lookup path for executable file
-func executablePath(name string) (string, error) {
-	if path, err := exec.LookPath(name); err == nil {
-		_, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			return filepath.Abs(os.Args[0])
+	// wait until TERM signal has received
+	for {
+		select {
+		case killSignal := <-interrupt:
+			if killSignal == os.Interrupt {
+				DEBUG_INFO("Interrupt has occurred by system signal")
+				return
+			}
+
+			DEBUG_INFO("Kill signal has occurred")
+			return
 		}
-		return path, nil
 	}
-	return filepath.Abs(os.Args[0])
 }
 
-// Check root rights to use system service
-func checkPrivileges() (bool, error) {
-	if output, err := exec.Command("id", "-g").Output(); err == nil {
-		if gid, parseErr := strconv.ParseUint(strings.TrimSpace(string(output)), 10, 32); parseErr == nil {
-			if gid == 0 {
-				return true, nil
-			}
-			return false, ErrRootPriveleges
-		}
+// main function
+func main() {
+
+	InitLogger("/tmp", "debug")
+
+	file_paths := []string{"/var/log/system.log", "/var/log/corecaptured.log"}
+	if err := InitKaohiWatcher(file_paths); err == nil {
+		fmt.Println("Initializing Kaohi watcher has failed.")
+		return
 	}
-	return false, ErrUnsupportedSystem
+
+	WaitForSignal()
+
+	FinalizeKaohiWatcher()
 }
