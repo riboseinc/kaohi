@@ -26,50 +26,13 @@
 package main
 
 import (
-	"fmt"
-	"os"
+ 	"os"
+ 	"fmt"
 	"os/signal"
 	"syscall"
 )
 
-type KaohiContext struct {
-	config kConfig
-	logger kLogger
-}
-
-// init kaohi context
-func (ctx *KaohiContext) Init() error {
-	var err error
-
-	// init config
-	if err = ctx.config.InitConfig(KAOHI_CONFIG_FILE); err != nil {
-		return err
-	}
-
-	// init logging
-	if err = InitLogger(ctx.config.GetLogDir(), ctx.config.GetLogLevel()); err != nil {
-		return err
-	}
-
-	DEBUG_INFO("Initializing Kaohi context")
-
-	// init command listener
-	if err = InitCmdListener(); err != nil {
-		return err;
-	}
-
-	return nil
-}
-
-// finalize kaohi context
-func (ctx *KaohiContext) Finalize() {
-	DEBUG_INFO("Finalizing Kaohi context")
-
-	// finalize command listener
-	FinalizeCmdListener()
-}
-
-// loop until interupt has occurred
+ // loop until interupt has occurred
 func WaitForSignal() {
 	// create signal channel
 	interrupt := make(chan os.Signal, 1)
@@ -92,23 +55,16 @@ func WaitForSignal() {
 
 // main function
 func main() {
-	var ctx KaohiContext
 
-	// check sudo privilege
-	if ok, err := checkPrivileges(); !ok {
-		fmt.Println(err)
-		os.Exit(1)
+	InitLogger("/tmp", "debug")
+
+	file_paths := []string{"/var/log/system.log", "/var/log/corecaptured.log"}
+	if err := InitKaohiWatcher(file_paths); err == nil {
+		fmt.Println("Initializing Kaohi watcher has failed.")
+		return
 	}
 
-	// init context
-	if err := ctx.Init(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	// main loop
 	WaitForSignal()
 
-	// finalize context
-	ctx.Finalize()
+	FinalizeKaohiWatcher()
 }
