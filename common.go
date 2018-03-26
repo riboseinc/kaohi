@@ -76,4 +76,7 @@ var (
 	ErrWriteBlocking = errors.New("write packet was blocking")
 
 	ErrReadBlocking  = errors.New("read packet was blocking")
+
+	// errors related with watcher
+	ErrWatchedFileDeleted = errors.New("The wathed file was deleted")
 )

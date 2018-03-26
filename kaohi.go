@@ -55,7 +55,12 @@ func (ctx *KaohiContext) Init() error {
 
 	// init command listener
 	if err = InitCmdListener(); err != nil {
-		return err;
+		return err
+	}
+
+	// init watcher
+	if err = InitKaohiWatcher(); err != nil {
+		return err
 	}
 
 	return nil
@@ -64,6 +69,9 @@ func (ctx *KaohiContext) Init() error {
 // finalize kaohi context
 func (ctx *KaohiContext) Finalize() {
 	DEBUG_INFO("Finalizing Kaohi context")
+
+	// finalize kaohi watcher
+	FinalizeKaohiWatcher()
 
 	// finalize command listener
 	FinalizeCmdListener()

@@ -34,6 +34,9 @@ import (
 
  // loop until interupt has occurred
 func WaitForSignal() {
+
+	DEBUG_INFO("Waiting for kill signal")
+
 	// create signal channel
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
@@ -58,8 +61,8 @@ func main() {
 
 	InitLogger("/tmp", "debug")
 
-	file_paths := []string{"/var/log/system.log", "/var/log/corecaptured.log"}
-	if err := InitKaohiWatcher(file_paths); err == nil {
+	file_paths := []string{"/var/log/system.log"}
+	if err := InitKaohiWatcher(file_paths); err != nil {
 		fmt.Println("Initializing Kaohi watcher has failed.")
 		return
 	}
