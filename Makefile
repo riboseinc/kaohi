@@ -10,6 +10,7 @@ all: dependencies darwin
 
 dependencies:
 	GOPATH=${GOPATH} go get github.com/bitly/go-simplejson
+	GOPATH=${GOPATH} go get github.com/alexflint/go-arg
 
 darwin:
 	GOPATH=${GOPATH} GOOS=darwin GOARCH=${GOARCH} go build  -o bin/${KAOHI_DAEMON_BIN}-darwin-${GOARCH} ${KAOHI_DAEMON_GO_FILES}

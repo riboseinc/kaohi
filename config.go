@@ -33,27 +33,7 @@ import (
  	"github.com/bitly/go-simplejson"
 )
 
-// Config interface for manipulating configurations
-type KaohiConfig interface {
-	// initialize config
-	InitConfig(file_path string) error
-
-	// add config item
-	AddConfigItem(name string, actType string, actData []string) error
-
-	// remove config item
-	RemoveConfigItem(name string) error
-
-	// save config file
-	SaveConfig(file_path string) error
-
-	// get log directory
-	GetLogDir() string
-
-	// get log level
-	GetLogLevel() string
-}
-
+// kaohi configuration structure
 type kActionConfig struct {
 	name string
 	actType string
@@ -68,6 +48,8 @@ type kActionConfig struct {
 type kConfig struct {
 	log_dir string
 	log_level string
+
+	listen_addr string
 
 	actConfigs []kActionConfig
 
@@ -99,6 +81,7 @@ func (config *kConfig) addConfigItem(js *simplejson.Json) {
 
 // init config
 func (config *kConfig) InitConfig(file_path string) error {
+
 	fmt.Println("Initialize configuration from file", file_path)
 
 	// read file contents
@@ -114,8 +97,21 @@ func (config *kConfig) InitConfig(file_path string) error {
 	}
 
 	// get log directory path
-	config.log_dir, _ = js.Get("log_dir").String()
-	config.log_level, _ = js.Get("log_level").String()
+	config.log_dir, err = js.Get("log_dir").String()
+	if err != nil {
+		config.log_dir = KAOHI_DEFAULT_LOG_DIR
+	}
+
+	config.log_level, err = js.Get("log_level").String()
+	if err != nil {
+		config.log_level = KAOHI_DEFAULT_LOG_LEVEL
+	}
+
+	// get listen address
+	config.listen_addr, err = js.Get("listen_address").String()
+	if err != nil {
+		config.listen_addr = KAOHI_DEFAULT_LISTEN_ADDR
+	}
 
 	// get action configs
 	actConfigs, _ := js.Get("configs").Array()

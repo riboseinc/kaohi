@@ -2,23 +2,33 @@
 	"log_dir": "/var/log/kaohi",
 	"log_level": "DEBUG",
 
-	"configs": [
+	"listen_address": "127.0.0.1:8443",
+
+	"log_paths": [
 		{
 			"name": "test1",
-			"type": "tail",
 			"file_paths": [
 				"/var/log/syslog",
 				"/var/log/faillog"
 			]
-		},
+		}
+	],
 
+	"commands": [
 		{
 			"name": "test2",
-			"type": "command",
+			"uid": 501,
+			"interval": 10,
 			"cmds": [
 				"/bin/ls",
 				"ifconfig"
 			]
 		}
-	]
+	],
+
+	"rsyslog": {
+		"listen_address": "*:6880",
+		"protocol": "tcp",
+		"local_socket": "/var/run/kaohi.sock",
+	}
 }

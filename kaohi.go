@@ -32,6 +32,7 @@ import (
 	"syscall"
 )
 
+// kaohi context structure
 type KaohiContext struct {
 	config kConfig
 	logger kLogger
@@ -42,7 +43,7 @@ func (ctx *KaohiContext) Init() error {
 	var err error
 
 	// init config
-	if err = ctx.config.InitConfig(KAOHI_CONFIG_FILE); err != nil {
+	if err = ctx.config.InitConfig(KAOHI_DEFAULT_CONFIG_FILE); err != nil {
 		return err
 	}
 
@@ -54,7 +55,7 @@ func (ctx *KaohiContext) Init() error {
 	DEBUG_INFO("Initializing Kaohi context")
 
 	// init command listener
-	if err = InitCmdListener(); err != nil {
+	if err = InitCmdListener(ctx); err != nil {
 		return err
 	}
 

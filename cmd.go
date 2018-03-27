@@ -388,13 +388,13 @@ func (this *Callback) OnClose(c *Conn) {
 }
 
 // init kaohi command listener
-func InitCmdListener() error {
+func InitCmdListener(ctx *KaohiContext) error {
 	var err error
 
 	DEBUG_INFO("Initializing command listener")
 
 	// create listener
-	listenAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.1:8989")
+	listenAddr, err := net.ResolveTCPAddr("tcp4", ctx.config.listen_addr)
 	if err != nil {
 		return ErrResolveAddr
 	}
@@ -403,6 +403,8 @@ func InitCmdListener() error {
 	if err != nil {
 		return ErrListenFaield
 	}
+
+	DEBUG_INFO("Listening on %s", ctx.config.listen_addr)
 
 	// creates a server instance
 	config := &CmdConfig{
