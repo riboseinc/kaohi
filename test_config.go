@@ -26,36 +26,37 @@
 package main
 
 import (
- "os"
- "fmt"
+	"os"
+	"fmt"
 )
+
+var opts = []kCmdLineOptions {
+	{'c', "config",        OPT_TYPE_STRING,   true,  "configuration file",       "the path of configuration file"},
+	{'l', "listen",        OPT_TYPE_ADDRPAIR, true,  "IP:port",                  "IP address and port number for listen"},
+	{'o', "commands",      OPT_TYPE_ARRAY,    true,  "commands",                 "the list of commands to be executed"},
+	{'i', "interval",      OPT_TYPE_INT,      true,  "interval",                 "the interval of command execution"},
+	{'u', "uid",           OPT_TYPE_INT,      true,  "uid",                      "the UID to run commands"},
+	{'w', "config-files",  OPT_TYPE_ARRAY,    true,  "config-files",             "the list of files to be watched"},
+	{'d', "log-dir",       OPT_TYPE_STRING,   true,  "log directory path",       "the path of log directory"},
+	{'v', "verbose",       OPT_TYPE_INT,      true,  "log level",                "the log level"},
+	{'r', "rsyslog",       OPT_TYPE_ADDRPAIR, true,  "rsyslog listening address","IP address and port number for listening rsyslog connections"},
+	{'s', "rasock",        OPT_TYPE_STRING,   true,  "reagent socket path",      "the path of unix socket to deliver the events to Reagent"},
+	{'p', "cred",          OPT_TYPE_STRING,   true,  "reagent credential",       "the credential to allow Kaohi to authenticate to Reagent"},
+	{'k', "key",           OPT_TYPE_STRING,   true,  "reagent key",              "initialization key provided by Reagent to allow signing Kaohi converted events"},
+	{'h', "help",          OPT_TYPE_BOOL,     false, "",                         "show help message"},
+	{'V', "version",       OPT_TYPE_BOOL,     false, "",                         "show version number"},
+}
 
 // main function
 func main() {
-	var config kConfig
+	// test for command line
+	if (len(os.Args) > 1) {
+		opt_vals, err := ParseCmdLine(opts)
+		if err != nil {
+			fmt.Println(err)
+			PrintUsage(opts)
+		}
 
-	// check arguments
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: test_config <JSON configuration file>")
-		os.Exit(1)
-	}
-
-	// init and parse config
-	err := config.InitConfig(os.Args[1])
-	if err != nil {
-		os.Exit(1)
-	}
-
-	// save config
-	err = config.SaveConfig("/tmp/1")
-	if err != nil {
-		os.Exit(1)
-	}
-
-	configData1 := []string{"/var/log/1.log", "/var/log/2.log"}
-	err = config.AddConfigItem("test3", "tail", configData1)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		fmt.Println(opt_vals)
 	}
 }

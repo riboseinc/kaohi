@@ -29,10 +29,23 @@ import (
 	"errors"
 )
 
+// default option values
 const (
-	KAOHI_CONFIG_FILE = "/etc/kaohi.conf"
+	KAOHI_DEFAULT_CONFIG_FILE        = "/etc/kaohi.conf"
 
-	KAOHI_LISTEN_ADDR = "127.0.0.1:6688"
+	KAOHI_DEFAULT_LOG_DIR            = "/var/log/kaohi"
+	KAOHI_DEFAULT_LOG_LEVEL          = "NORMAL"
+
+	KAOHI_DEFAULT_LISTEN_ADDR        = "127.0.0.1:6688"
+
+	KAOHI_RA_SOCK_PATH               = "/var/run/.kaohi_ra"
+
+	KAOHI_DEFAULT_CMD_UID            = 0
+	KAOHI_DEFAULT_CMD_INTERVAL       = -1
+
+	KAOHI_DEFAULT_SYSLOG_STATUE      = 0
+	KAOHI_DEFAULT_SYSLOG_LISTEN_ADDR = "0.0.0.0:5443"
+	KAOHI_DEFAULT_SYSLOG_PROTO       = "tcp"
 )
 
 var (

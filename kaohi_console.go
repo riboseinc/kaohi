@@ -1,5 +1,12 @@
+
 package main
+
 import "fmt"
+
+type Options struct {
+	
+}
+
 func main() {
-    fmt.Println("hello world")
+	
 }
