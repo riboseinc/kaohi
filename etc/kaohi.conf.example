@@ -4,7 +4,7 @@
 
 	"listen_address": "127.0.0.1:8443",
 
-	"log_paths": [
+	"config_paths": [
 		{
 			"name": "test1",
 			"file_paths": [
@@ -27,6 +27,7 @@
 	],
 
 	"rsyslog": {
+		"status": false,
 		"listen_address": "*:6880",
 		"protocol": "tcp",
 		"local_socket": "/var/run/kaohi.sock",

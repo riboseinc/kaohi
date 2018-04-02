@@ -26,153 +26,363 @@
 package main
 
 import (
- 	"fmt"
- 	"io/ioutil"
- 	"sync"
+	"os"
+	"fmt"
+	"io/ioutil"
+	"sync"
+	"net"
+	"strconv"
+	"errors"
 
- 	"github.com/bitly/go-simplejson"
+	"github.com/bitly/go-simplejson"
 )
 
+// types of option values
+type kOptType uint32
+const (
+	OPT_TYPE_INT kOptType = iota
+	OPT_TYPE_BOOL
+	OPT_TYPE_STRING
+	OPT_TYPE_ARRAY
+	OPT_TYPE_ADDRPAIR              // IPAddress:Port
+	OPT_TYPE_NONE
+)
+
+// type of configuration format
+type kCfgFmt uint32
+const (
+	CFG_FMT_JSON kCfgFmt = iota
+)
+
+type kCmdLineOptions struct {
+	short_nm   byte
+	long_nm    string
+	opt_type   kOptType
+	need_arg   bool
+	arg_desc   string
+	desc       string
+}
+
+// print usage
+func PrintUsage(opts []kCmdLineOptions) {
+	var max_short_nm_len, max_long_nm_len, max_arg_desc_len int
+
+	max_short_nm_len = 0
+	max_long_nm_len = 0
+	max_arg_desc_len = 0
+	for i:=0; i < len(opts); i++ {
+		if len(string(opts[i].short_nm)) > max_short_nm_len {
+			max_short_nm_len = len(string(opts[i].short_nm))
+		}
+
+		if len(string(opts[i].long_nm)) > max_long_nm_len {
+			max_long_nm_len = len(string(opts[i].long_nm))
+		}
+
+		if len(string(opts[i].arg_desc)) > max_arg_desc_len {
+			max_arg_desc_len = len(string(opts[i].arg_desc))
+		}
+	}
+	max_long_nm_len += 2
+	max_arg_desc_len += 2
+
+	fmt.Printf("Usage: %s [options]\n", os.Args[0])
+	for i:=0; i < len(opts); i++ {
+		short_nm_padding := FillBytesArray(max_short_nm_len - len(string(opts[i].short_nm)), ' ')
+		long_nm_padding := FillBytesArray(max_long_nm_len - len(opts[i].long_nm), ' ')
+		arg_desc_padding := FillBytesArray(max_arg_desc_len - len(opts[i].arg_desc), ' ')
+		if opts[i].need_arg {
+			fmt.Printf("  -%v%v|--%v%v<%v>%v: %v\n",
+				string(opts[i].short_nm), string(short_nm_padding),
+				opts[i].long_nm, string(long_nm_padding),
+				opts[i].arg_desc, string(arg_desc_padding),
+				opts[i].desc)
+		} else {
+			fmt.Printf("  -%v%v|--%v%v%v  : %v\n",
+				string(opts[i].short_nm), string(short_nm_padding),
+				opts[i].long_nm, string(long_nm_padding),
+				string(arg_desc_padding),
+				opts[i].desc)
+		}
+	}
+}
+
+// parse option for int type
+func ParseOptInt(opt_val interface{}) bool {
+	var str string
+	var found bool
+
+	if str, found = opt_val.(string); !found {
+		return false
+	}
+
+	if _, err := strconv.Atoi(str); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// parse option for string type
+func ParseOptString(opt_val interface{}) bool {
+	_, found := opt_val.(string)
+	return found
+}
+
+// parse option for array type
+func ParseOptArray(opt_val interface{}) bool {
+	str, found := opt_val.(string)
+	if !found {
+		return false
+	}
+
+	arr := []string{str}
+	if len(arr) == 0 {
+		return false
+	}
+
+	return true
+}
+
+// parse option for address type
+func ParseOptAddrPair(opt_val interface{}) bool {
+	str, found := opt_val.(string)
+	if !found {
+		return false
+	}
+
+	_, _, err := net.SplitHostPort(str)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// check type of option value
+func CheckOptValType(opt_type kOptType, opt_val interface{}) bool {
+	var matched bool
+
+	switch opt_type {
+	case OPT_TYPE_INT:
+		matched = ParseOptInt(opt_val)
+	case OPT_TYPE_STRING:
+		matched = ParseOptString(opt_val)
+	case OPT_TYPE_ARRAY:
+		matched = ParseOptArray(opt_val)
+	case OPT_TYPE_ADDRPAIR:
+		matched = ParseOptAddrPair(opt_val)
+	}
+
+	return matched
+}
+
+// parse command line arguments
+func ParseCmdLine(opts []kCmdLineOptions) (map[string]interface{}, error) {
+	opt_val := make(map[string]interface{})
+	for i:=1; i < len(os.Args); i++ {
+		found := false
+		arg := os.Args[i]
+
+		for j:=0; j < len(opts); j++ {
+			opt := opts[j]
+			short_nm := "-" + string(opt.short_nm)
+			long_nm := "--" + string(opt.long_nm)
+
+			// matches for short and long name
+			if arg != short_nm && arg != long_nm {
+				continue
+			}
+
+			// check whether argument needs value
+			if !opt.need_arg {
+				if opt.opt_type == OPT_TYPE_BOOL {
+					opt_val[opt.long_nm] = true
+					found = true
+					break
+				}
+				continue
+			}
+
+			// check for variable type
+			i++
+			if i == len(os.Args) {
+				return nil, errors.New(fmt.Sprintf("Missing argument for option '%s'", arg))
+			}
+
+			if matched := CheckOptValType(opt.opt_type, os.Args[i]); !matched {
+				return nil, errors.New(fmt.Sprintf("Invalid argument type for option '%s'", arg))
+			}
+
+			// set value
+			opt_val[opt.long_nm] = string(os.Args[i])
+			found = true
+
+			break
+		}
+
+		if !found {
+			return nil, errors.New(fmt.Sprintf("Invalid option '%s'", arg))
+		}
+	}
+
+	return opt_val, nil
+}
+
 // kaohi configuration structure
-type kActionConfig struct {
-	name string
-	actType string
-
-	// file paths for tail mode
+type kTailItem struct {
+	name       string
 	file_paths []string
+}
 
-	// commands for command mode
-	cmds []string
+type kCmdItem struct {
+	name     string
+	uid      int
+	interval int
+	cmds     []string
+}
+
+type kRsyslogConfig struct {
+	status          bool
+	listen_address  string
+	protocol        string
+	local_sock_path string
+}
+
+func NewRsyslogConfig() *kRsyslogConfig {
+	return &kRsyslogConfig {
+		status:           false,
+		listen_address:   KAOHI_DEFAULT_SYSLOG_LISTEN_ADDR,
+		protocol:         KAOHI_DEFAULT_SYSLOG_PROTO,
+		local_sock_path:  "",
+	}
 }
 
 type kConfig struct {
-	log_dir string
-	log_level string
+	log_dir        string
+	log_level      string
 
-	listen_addr string
+	listen_addr    string
 
-	actConfigs []kActionConfig
+	rsyslog_config *kRsyslogConfig
+
+	tail_items     []kTailItem
+	cmd_items      []kCmdItem
 
 	mux sync.Mutex
 }
 
-// add config item
-func (config *kConfig) addConfigItem(js *simplejson.Json) {
-	var actConfig kActionConfig
+func NewKaohiConfig() *kConfig {
+	return &kConfig {
+		log_dir:         KAOHI_DEFAULT_LOG_DIR,
+		log_level:       KAOHI_DEFAULT_LOG_LEVEL,
 
-	// set name and type
-	actConfig.name, _ = js.Get("name").String()
-	actConfig.actType, _ = js.Get("type").String()
+		listen_addr:     KAOHI_DEFAULT_LISTEN_ADDR,
 
-	if actConfig.actType == "tail" {
-		file_paths, _ := js.Get("file_paths").Array()
-		for _, v := range file_paths {
-			actConfig.file_paths = append(actConfig.file_paths, v.(string))
-		}
-	} else if actConfig.actType == "command" {
-		cmds, _ := js.Get("cmds").Array()
-		for _, v := range cmds {
-			actConfig.cmds = append(actConfig.cmds, v.(string))
-		}
+		rsyslog_config:  NewRsyslogConfig(),
+
+		mux:             sync.Mutex{},
 	}
-
-	config.actConfigs = append(config.actConfigs, actConfig)
-}
-
-// init config
-func (config *kConfig) InitConfig(file_path string) error {
-
-	fmt.Println("Initialize configuration from file", file_path)
-
-	// read file contents
-	config_jdata, err := ioutil.ReadFile(file_path)
-	if err != nil {
-		return ErrConfigOpenFailed
-	}
-
-	// parse JSON configuration using simeplejson package
-	js, err := simplejson.NewJson(config_jdata)
-	if err != nil {
-		return ErrConfigInvalidJSON
-	}
-
-	// get log directory path
-	config.log_dir, err = js.Get("log_dir").String()
-	if err != nil {
-		config.log_dir = KAOHI_DEFAULT_LOG_DIR
-	}
-
-	config.log_level, err = js.Get("log_level").String()
-	if err != nil {
-		config.log_level = KAOHI_DEFAULT_LOG_LEVEL
-	}
-
-	// get listen address
-	config.listen_addr, err = js.Get("listen_address").String()
-	if err != nil {
-		config.listen_addr = KAOHI_DEFAULT_LISTEN_ADDR
-	}
-
-	// get action configs
-	actConfigs, _ := js.Get("configs").Array()
-	for i := 0; i < len(actConfigs); i++ {
-		config.addConfigItem(js.Get("configs").GetIndex(i))
-	}
-
-	return nil
 }
 
 // add config item
-func (config *kConfig) AddConfigItem(name string, actType string, actData []string) error {
-	var configItem kActionConfig
+func (config *kConfig) AddTailItem(name string, file_paths []string) error {
+	var tail_item kTailItem
 
-	// set config item
-	configItem.name = name
-	configItem.actType = actType
-
-	if actType == "tail" {
-		configItem.file_paths = actData
-	} else if actType == "command" {
-		configItem.cmds = actData
-	}
+	// set tail item
+	tail_item.name = name
+	tail_item.file_paths = file_paths
 
 	// add config item to list
 	config.mux.Lock()
 
-	for i := 0; i < len(config.actConfigs); i++ {
-		if name == config.actConfigs[i].name {
+	for i := 0; i < len(config.tail_items); i++ {
+		if name == config.tail_items[i].name {
 			config.mux.Unlock()
 			return ErrConfigItemExist
 		}
 	}
 
-	config.actConfigs = append(config.actConfigs, configItem)
+	config.tail_items = append(config.tail_items, tail_item)
 
 	config.mux.Unlock()
 
 	return nil
 }
 
-// remove config item
-func (config *kConfig) RemoveConfigItem(name string) error {
+// add command
+func (config *kConfig) AddCmdItem(name string, uid int, interval int, cmds []string) error {
+	var cmd_item kCmdItem
+
+	// set cmd item
+	cmd_item.name = name
+	cmd_item.uid = uid
+	cmd_item.interval = interval
+	cmd_item.cmds = cmds
+
+	// add cmd item to list
+	config.mux.Lock()
+
+	for i := 0; i < len(config.cmd_items); i++ {
+		if name == config.cmd_items[i].name {
+			config.mux.Unlock()
+			return ErrConfigItemExist
+		}
+	}
+
+	config.cmd_items = append(config.cmd_items, cmd_item)
+
+	config.mux.Unlock()
+
+	return nil
+}
+
+// remove tail item
+func (config *kConfig) RemoveTailItem(name string) error {
 	var i int
 
 	config.mux.Lock()
 
 	// find config with same name
-	for i := 0; i < len(config.actConfigs); i++ {
-		if name == config.actConfigs[i].name {
+	for i := 0; i < len(config.tail_items); i++ {
+		if name == config.tail_items[i].name {
 			break;
 		}
 	}
 
-	if i == len(config.actConfigs) {
+	if i == len(config.tail_items) {
 		config.mux.Unlock()
 		return ErrConfigNoExist
 	}
 
 	// remove config
-	config.actConfigs = append(config.actConfigs[:i], config.actConfigs[i+1:]...)
+	config.tail_items = append(config.tail_items[:i], config.tail_items[i+1:]...)
+
+	config.mux.Unlock()
+
+	return nil
+}
+
+// remove cmd item
+func (config *kConfig) RemoveCmdItem(name string) error {
+	var i int
+
+	config.mux.Lock()
+
+	// find config with same name
+	for i := 0; i < len(config.cmd_items); i++ {
+		if name == config.cmd_items[i].name {
+			break;
+		}
+	}
+
+	if i == len(config.cmd_items) {
+		config.mux.Unlock()
+		return ErrConfigNoExist
+	}
+
+	// remove config
+	config.cmd_items = append(config.cmd_items[:i], config.cmd_items[i+1:]...)
 
 	config.mux.Unlock()
 
@@ -188,24 +398,38 @@ func (config *kConfig) SaveConfig(file_path string) error {
 	// marshall JSON structure
 	js = simplejson.New()
 
-	configItems := make([]*simplejson.Json, len(config.actConfigs))
-	for i := 0; i < len(config.actConfigs); i++ {
-		actConfig := config.actConfigs[i]
-		jsActConfig := simplejson.New()
+	js_tail_items := make([]*simplejson.Json, len(config.tail_items))
+	for i := 0; i < len(config.tail_items); i++ {
+		tail_item := config.tail_items[i]
+		js_tail := simplejson.New()
 
-		jsActConfig.Set("name", actConfig.name)
-		jsActConfig.Set("type", actConfig.actType)
+		js_tail.Set("name", tail_item.name)
+		js_tail.Set("file_paths", tail_item.file_paths)
 
-		fmt.Println(actConfig.name, actConfig.actType)
-
-		if actConfig.actType == "tail" {
-			jsActConfig.Set("file_paths", actConfig.file_paths)
-		} else {
-			jsActConfig.Set("cmds", actConfig.cmds)
-		}
-		configItems[i] = jsActConfig
+		js_tail_items[i] = js_tail
 	}
-	js.Set("configs", configItems)
+	js.Set("config_files", js_tail_items)
+
+	js_cmd_items := make([]*simplejson.Json, len(config.cmd_items))
+	for i := 0; i < len(config.cmd_items); i++ {
+		cmd_item := config.cmd_items[i]
+		js_cmd := simplejson.New()
+
+		js_cmd.Set("name", cmd_item.name)
+
+		if cmd_item.uid > 0 {
+			js_cmd.Set("uid", cmd_item.uid)
+		}
+
+		if cmd_item.interval > 0 {
+			js_cmd.Set("interval", cmd_item.interval)
+		}
+
+		js_cmd.Set("cmds", cmd_item.cmds)
+
+		js_cmd_items[i] = js_cmd
+	}
+	js.Set("commands", js_cmd_items)
 
 	js.Set("log_dir", config.log_dir)
 	js.Set("log_level", config.log_level)
@@ -221,6 +445,97 @@ func (config *kConfig) SaveConfig(file_path string) error {
 	return nil
 }
 
+// add tail item
+func (config *kConfig) addTailItem(js *simplejson.Json) error {
+	var tail_item kTailItem
+	var err error
+	var file_paths []interface{}
+
+	// get name
+	if tail_item.name, err = js.Get("name").String(); err != nil {
+		return err
+	}
+
+	// get file paths
+	if file_paths, err = js.Get("file_paths").Array(); err != nil {
+		return err
+	}
+
+	for _, v := range file_paths {
+		tail_item.file_paths = append(tail_item.file_paths, v.(string))
+	}
+
+	// add tail item to config
+	config.tail_items = append(config.tail_items, tail_item)
+
+	return nil
+}
+
+// add command item
+func (config *kConfig) addCmdItem(js *simplejson.Json) error {
+	var cmd_item kCmdItem
+	var err error
+	var cmds []interface{}
+
+	// get name
+	if cmd_item.name, err = js.Get("name").String(); err != nil {
+		return err
+	}
+
+	if cmd_item.uid, err = js.Get("uid").Int(); err != nil {
+		cmd_item.uid = KAOHI_DEFAULT_CMD_UID
+	}
+
+	if cmd_item.interval, err = js.Get("uid").Int(); err != nil {
+		cmd_item.interval = KAOHI_DEFAULT_CMD_INTERVAL
+	}
+
+	// get cmd list
+	if cmds, err = js.Get("cmds").Array(); err != nil {
+		return err
+	}
+
+	for _, v := range cmds {
+		cmd_item.cmds = append(cmd_item.cmds, v.(string))
+	}
+
+	// add command item to config
+	config.cmd_items = append(config.cmd_items, cmd_item)
+
+	return nil
+}
+
+// parse rsyslog config
+func (config *kConfig) parseRsyslogConfig(rsyslog_js *simplejson.Json) error {
+	var status bool
+	var listen_addr, protocol, local_sock_path string
+	var err error
+
+	// get rsyslog status
+	if status, err = rsyslog_js.Get("status").Bool(); err != nil {
+		config.rsyslog_config.status = false
+	}
+	config.rsyslog_config.status = status
+
+	// get listen address
+	if listen_addr, err = rsyslog_js.Get("listen_addr").String(); err != nil {
+		config.rsyslog_config.listen_address = ""
+	}
+	config.rsyslog_config.listen_address = listen_addr;
+
+	// get protocol
+	if protocol, err = rsyslog_js.Get("protocol").String(); err == nil {
+		config.rsyslog_config.protocol = protocol
+	}
+
+	// get local socket path
+	if local_sock_path, err = rsyslog_js.Get("local_sock_path").String(); err == nil {
+		config.rsyslog_config.local_sock_path = local_sock_path
+	}
+
+	return nil
+}
+
 // get log directory
 func (config *kConfig) GetLogDir() string {
 	return config.log_dir
@@ -229,4 +544,62 @@ func (config *kConfig) GetLogDir() string {
 // get log level
 func (config *kConfig) GetLogLevel() string {
 	return config.log_level
+}
+
+// init config
+func InitConfig(file_path string) (*kConfig, error) {
+	var config_jdata []byte
+	var js *simplejson.Json
+	var log_dir, log_level, listen_addr string
+	var err error
+
+	fmt.Println("Initialize configuration from file", file_path)
+
+	// create new config
+	config := NewKaohiConfig();
+
+	// read file contents
+	if config_jdata, err = ioutil.ReadFile(file_path); err != nil {
+		return nil, ErrConfigOpenFailed
+	}
+
+	// parse JSON configuration using simeplejson package
+	if js, err = simplejson.NewJson(config_jdata); err != nil {
+		return nil, ErrConfigInvalidJSON
+	}
+
+	// get log directory path
+	if log_dir, err = js.Get("log_dir").String(); err == nil {
+		config.log_dir = log_dir
+	}
+
+	if log_level, err = js.Get("log_level").String(); err == nil {
+		config.log_level = log_level
+	}
+
+	// get listen address
+	if listen_addr, err = js.Get("listen_address").String(); err == nil {
+		config.listen_addr = listen_addr
+	}
+
+	// get tail items
+	if tail_items, err := js.Get("config_files").Array(); err == nil {
+		for i := 0; i < len(tail_items); i++ {
+			config.addTailItem(js.Get("config_files").GetIndex(i))
+		}
+	}
+
+	// get command items
+	if cmd_items, err := js.Get("commands").Array(); err == nil {
+		for i := 0; i < len(cmd_items); i++ {
+			config.addCmdItem(js.Get("commands").GetIndex(i))
+		}
+	}
+
+	// parse rsyslog info
+	if rsyslog_js := js.Get("rsyslog"); rsyslog_js != nil {
+		config.parseRsyslogConfig(rsyslog_js)
+	}
+
+	return config, nil
 }

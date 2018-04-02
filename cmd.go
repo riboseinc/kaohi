@@ -383,12 +383,12 @@ func (this *Callback) OnMessage(c *Conn, p *CmdPacket) bool {
 	return true
 }
 
-func (this *Callback) OnClose(c *Conn) {
+func (this *Callback) OnClose(c *Conn) {2
 	fmt.Println("OnClose:", c.GetExtraData())
 }
 
 // init kaohi command listener
-func InitCmdListener(ctx *KaohiContext) error {
+func InitCmdListener(ctx *kContext) error {
 	var err error
 
 	DEBUG_INFO("Initializing command listener")

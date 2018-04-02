@@ -32,18 +32,50 @@ import (
 	"syscall"
 )
 
+var opts = []kCmdLineOptions {
+	{'c', "config",        OPT_TYPE_STRING,   true,  "configuration file",       "the path of configuration file"},
+	{'l', "listen",        OPT_TYPE_ADDRPAIR, true,  "IP:port",                  "IP address and port number for listen"},
+	{'o', "commands",      OPT_TYPE_ARRAY,    true,  "commands",                 "the list of commands to be executed"},
+	{'i', "interval",      OPT_TYPE_INT,      true,  "interval",                 "the interval of command execution"},
+	{'u', "uid",           OPT_TYPE_INT,      true,  "uid",                      "the UID to run commands"},
+	{'w', "config-files",  OPT_TYPE_ARRAY,    true,  "config-files",             "the list of files to be watched"},
+	{'d', "log-dir",       OPT_TYPE_STRING,   true,  "log directory path",       "the path of log directory"},
+	{'v', "verbose",       OPT_TYPE_INT,      true,  "log level",                "the log level"},
+	{'r', "rsyslog",       OPT_TYPE_ADDRPAIR, true,  "rsyslog listening address","IP address and port number for listening rsyslog connections"},
+	{'s', "rasock",        OPT_TYPE_STRING,   true,  "reagent socket path",      "the path of unix socket to deliver the events to Reagent"},
+	{'p', "cred",          OPT_TYPE_STRING,   true,  "reagent credential",       "the credential to allow Kaohi to authenticate to Reagent"},
+	{'k', "key",           OPT_TYPE_STRING,   true,  "reagent key",              "initialization key provided by Reagent to allow signing Kaohi converted events"},
+	{'h', "help",          OPT_TYPE_NONE,     false, "",                         "show help message"},
+	{'V', "version",       OPT_TYPE_NONE,     false, "",                         "show version number"},
+}
+
 // kaohi context structure
-type KaohiContext struct {
-	config kConfig
-	logger kLogger
+type kContext struct {
+	options map[string]interface{}
+
+	config *kConfig
+	logger *kLogger
+}
+
+func NewKaohiContext() *kContext {
+	return &kContext {
+		options:            make(map[string]interface{}),
+		config:             NewKaohiConfig(),
+		logger:             nil,
+	}
+}
+
+// print version
+func PrintVersion() {
+	
 }
 
 // init kaohi context
-func (ctx *KaohiContext) Init() error {
+func (ctx *kContext) Init() error {
 	var err error
 
 	// init config
-	if err = ctx.config.InitConfig(KAOHI_DEFAULT_CONFIG_FILE); err != nil {
+	if ctx.config, err = InitConfig(KAOHI_DEFAULT_CONFIG_FILE); err != nil {
 		return err
 	}
 
@@ -68,7 +100,7 @@ func (ctx *KaohiContext) Init() error {
 }
 
 // finalize kaohi context
-func (ctx *KaohiContext) Finalize() {
+func (ctx *kContext) Finalize() {
 	DEBUG_INFO("Finalizing Kaohi context")
 
 	// finalize kaohi watcher
@@ -101,12 +133,33 @@ func WaitForSignal() {
 
 // main function
 func main() {
-	var ctx KaohiContext
+	var ctx *kContext
+	var err error
 
 	// check sudo privilege
 	if ok, err := checkPrivileges(); !ok {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+
+	// parse command line
+	if len(os.Args) > 1 {
+		if ctx.options, err = ParseCmdLine(opts); err != nil {
+			PrintUsage(opts)
+			os.Exit(1)
+		}
+
+		// print help
+		if ctx.options["help"].(bool) == true {
+			PrintUsage(opts)
+			os.Exit(0)
+		}
+
+		// print version
+		if ctx.options["version"].(bool) == true {
+			PrintVersion()
+			os.Exit(0)
+		}
 	}
 
 	// init context

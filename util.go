@@ -63,3 +63,13 @@ func checkPrivileges() (bool, error) {
 	}
 	return false, ErrUnsupportedSystem
 }
+
+// fill array with specified character
+func FillBytesArray(len int, ch byte) []byte {
+	bytes_arr := make([]byte, len)
+	for i := range bytes_arr {
+		bytes_arr[i] = ch
+	}
+
+	return bytes_arr
+}
