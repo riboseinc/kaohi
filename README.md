@@ -1,24 +1,55 @@
 # Kaohi
 
-Kaohi is an advanced log daemon that solves all the problems that currently exist in syslog daemons on Unix.
+Kaohi is an advanced log collector that is event-driven in lieu of traditional line based syslog.
 
+## Log management problems
 
-## Description
+Log management is a big PITA. In this section we will break down the problems surrounding log management.
 
-Typical Syslog daemon problems (due to the nature of the syslog protocol):
+### Storage
+- Log files are typically stored locally. 
+- Log rotation can lead to hanging daemons (open FD, stop logging)
+- Full disks can lead to server hanging
+- Cloud instances typically have a small disk drive.
+- Containers do not have filesystems
 
-. No authenticity and integrity verification
-. Log events are text strings only
-. Logging inside containers is cumbersome and can lead to disk space problems
+### Confidentiality
+Log files generally contain sensitive information.
+- Log files are stored locally unencrypted
+- Logs can be transported over the network unencrypted
+
+### Integrity
+- Log files can get corrupted
+- Logs can be modified during transportation over the network
+
+### Authentication
+- Due to lack of authentication in log protocols any application or system can send log messages
+
+### Authenticity
+- Any application or system can imitate other applications or systems
+
+### A big heap
+- Log files are basically a big heap of lines of text without structure and context
+
+### Text based
+- Log messages typically are text-based only
+- Screenshots or (e.g. SystemD Journal) firmware dumps
+
+### Centralisation
+- Cloud systems or clusters 
+
+### Events
+- A single log line is useless, several log lines are even more useless, the only thing that is important is a log *event*
+
 
 
 ## Kaohi Modules
 
-Kaohi consists of five core modules that provide log collection functionality
+Kaohi consists of five core modules that provide log collection functionality.
 
 ### Kaohi Log Event Collector (KLEC)
 
-The native log event model-based collector
+The native log event model-based collector.
 
 ### Kaohi File Collector (KFD)
 
@@ -40,4 +71,3 @@ The KPC is a named pipe log collector best suited to be used in cloud systems or
 ## Kaohi Architecture Overview
 
 ![alt text](https://raw.githubusercontent.com/riboseinc/kaohi/master/images/kaohi-modules-and-architecture.png "Kaohi architecture")
-
