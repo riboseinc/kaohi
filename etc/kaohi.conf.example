@@ -1,35 +1,34 @@
-{
-	"log_dir": "/var/log/kaohi",
-	"log_level": "DEBUG",
 
-	"listen_address": "127.0.0.1:8443",
+# This configuration is an example of Kaohi configuraion
 
-	"config_paths": [
-		{
-			"name": "test1",
-			"file_paths": [
-				"/var/log/syslog",
-				"/var/log/faillog"
-			]
-		}
-	],
+log-settings {
+	directory = "/var/log/example"
+	level = 1                                   // 0 - Silent, 1 - Normal, 2 - Debug, 3 - Verbose
+}
 
-	"commands": [
-		{
-			"name": "test2",
-			"uid": 501,
-			"interval": 10,
-			"cmds": [
-				"/bin/ls",
-				"ifconfig"
-			]
-		}
-	],
+listen {
+	address = "127.0.0.1:5445"
+}
 
-	"rsyslog": {
-		"status": false,
-		"listen_address": "*:6880",
-		"protocol": "tcp",
-		"local_socket": "/var/run/kaohi.sock",
-	}
+configs "cfg_group1" {
+	files = [
+		"/var/log/system.log",
+		"/var/log/fail.log"
+	]
+}
+
+commands "cmd_group1" {
+	uid = 501
+	interval = 10                               // seconds
+	files = [
+		"/bin/ls",
+		"ifconfig"
+	]	
+}
+
+rsyslog {
+	status = "on"
+	listen_address = "*.6800"
+	protocol = "tcp"
+	local_socket = "/var/log/rsyslog.sock"
 }

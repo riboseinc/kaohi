@@ -34,200 +34,41 @@ import (
 	"strconv"
 	"errors"
 
-	"github.com/bitly/go-simplejson"
+	"github.com/riboseinc/go-multiconfig"
 )
 
-// types of option values
-type kOptType uint32
-const (
-	OPT_TYPE_INT kOptType = iota
-	OPT_TYPE_BOOL
-	OPT_TYPE_STRING
-	OPT_TYPE_ARRAY
-	OPT_TYPE_ADDRPAIR              // IPAddress:Port
-	OPT_TYPE_NONE
-)
+var ConfigOpts = []mconfig.ConfigItemScheme {
+	{
+		"config",
+		"The configuration file path",
+		CONF_VAL_TYPE_STRING,
+		&CommandLineSwitch{'c', "config"},
+		"", "",
+		"Specify the configuration file path",
+		nil,
+	},
 
-// type of configuration format
-type kCfgFmt uint32
-const (
-	CFG_FMT_JSON kCfgFmt = iota
-)
+	{
+		"log-dir",
+		"The logging directory",
+		CONF_VAL_TYPE_STRING,
+		&CommandLineSwitch{'d', "log-dir"},
+		"log-settings.directory", "",
+		"Specify the logging directory",
+		nil,
+	},
 
-type kCmdLineOptions struct {
-	short_nm   byte
-	long_nm    string
-	opt_type   kOptType
-	need_arg   bool
-	arg_desc   string
-	desc       string
+	{
+		"listen",
+		"Listening address for incoming events",
+		CONF_VAL_TYPE_IPADDR,
+		&CommandLineSwitch{'l', "listen"},
+		"listen.address", "",
+		"Specify the listenning address",
+		nil,
+	},
 }
 
-// print usage
-func PrintUsage(opts []kCmdLineOptions) {
-	var max_short_nm_len, max_long_nm_len, max_arg_desc_len int
-
-	max_short_nm_len = 0
-	max_long_nm_len = 0
-	max_arg_desc_len = 0
-	for i:=0; i < len(opts); i++ {
-		if len(string(opts[i].short_nm)) > max_short_nm_len {
-			max_short_nm_len = len(string(opts[i].short_nm))
-		}
-
-		if len(string(opts[i].long_nm)) > max_long_nm_len {
-			max_long_nm_len = len(string(opts[i].long_nm))
-		}
-
-		if len(string(opts[i].arg_desc)) > max_arg_desc_len {
-			max_arg_desc_len = len(string(opts[i].arg_desc))
-		}
-	}
-	max_long_nm_len += 2
-	max_arg_desc_len += 2
-
-	fmt.Printf("Usage: %s [options]\n", os.Args[0])
-	for i:=0; i < len(opts); i++ {
-		short_nm_padding := FillBytesArray(max_short_nm_len - len(string(opts[i].short_nm)), ' ')
-		long_nm_padding := FillBytesArray(max_long_nm_len - len(opts[i].long_nm), ' ')
-		arg_desc_padding := FillBytesArray(max_arg_desc_len - len(opts[i].arg_desc), ' ')
-		if opts[i].need_arg {
-			fmt.Printf("  -%v%v|--%v%v<%v>%v: %v\n",
-				string(opts[i].short_nm), string(short_nm_padding),
-				opts[i].long_nm, string(long_nm_padding),
-				opts[i].arg_desc, string(arg_desc_padding),
-				opts[i].desc)
-		} else {
-			fmt.Printf("  -%v%v|--%v%v%v  : %v\n",
-				string(opts[i].short_nm), string(short_nm_padding),
-				opts[i].long_nm, string(long_nm_padding),
-				string(arg_desc_padding),
-				opts[i].desc)
-		}
-	}
-}
-
-// parse option for int type
-func ParseOptInt(opt_val interface{}) bool {
-	var str string
-	var found bool
-
-	if str, found = opt_val.(string); !found {
-		return false
-	}
-
-	if _, err := strconv.Atoi(str); err != nil {
-		return false
-	}
-
-	return true
-}
-
-// parse option for string type
-func ParseOptString(opt_val interface{}) bool {
-	_, found := opt_val.(string)
-	return found
-}
-
-// parse option for array type
-func ParseOptArray(opt_val interface{}) bool {
-	str, found := opt_val.(string)
-	if !found {
-		return false
-	}
-
-	arr := []string{str}
-	if len(arr) == 0 {
-		return false
-	}
-
-	return true
-}
-
-// parse option for address type
-func ParseOptAddrPair(opt_val interface{}) bool {
-	str, found := opt_val.(string)
-	if !found {
-		return false
-	}
-
-	_, _, err := net.SplitHostPort(str)
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-// check type of option value
-func CheckOptValType(opt_type kOptType, opt_val interface{}) bool {
-	var matched bool
-
-	switch opt_type {
-	case OPT_TYPE_INT:
-		matched = ParseOptInt(opt_val)
-	case OPT_TYPE_STRING:
-		matched = ParseOptString(opt_val)
-	case OPT_TYPE_ARRAY:
-		matched = ParseOptArray(opt_val)
-	case OPT_TYPE_ADDRPAIR:
-		matched = ParseOptAddrPair(opt_val)
-	}
-
-	return matched
-}
-
-// parse command line arguments
-func ParseCmdLine(opts []kCmdLineOptions) (map[string]interface{}, error) {
-	opt_val := make(map[string]interface{})
-	for i:=1; i < len(os.Args); i++ {
-		found := false
-		arg := os.Args[i]
-
-		for j:=0; j < len(opts); j++ {
-			opt := opts[j]
-			short_nm := "-" + string(opt.short_nm)
-			long_nm := "--" + string(opt.long_nm)
-
-			// matches for short and long name
-			if arg != short_nm && arg != long_nm {
-				continue
-			}
-
-			// check whether argument needs value
-			if !opt.need_arg {
-				if opt.opt_type == OPT_TYPE_BOOL {
-					opt_val[opt.long_nm] = true
-					found = true
-					break
-				}
-				continue
-			}
-
-			// check for variable type
-			i++
-			if i == len(os.Args) {
-				return nil, errors.New(fmt.Sprintf("Missing argument for option '%s'", arg))
-			}
-
-			if matched := CheckOptValType(opt.opt_type, os.Args[i]); !matched {
-				return nil, errors.New(fmt.Sprintf("Invalid argument type for option '%s'", arg))
-			}
-
-			// set value
-			opt_val[opt.long_nm] = string(os.Args[i])
-			found = true
-
-			break
-		}
-
-		if !found {
-			return nil, errors.New(fmt.Sprintf("Invalid option '%s'", arg))
-		}
-	}
-
-	return opt_val, nil
-}
 
 // kaohi configuration structure
 type kTailItem struct {
