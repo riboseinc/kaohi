@@ -26,7 +26,8 @@
 package main
 
 import (
- 	"fmt"
+ 	"io/ioutil"
+
 	"github.com/riboseinc/go-multiconfig"
 )
 
@@ -71,14 +72,23 @@ func NewKaohiConfig() *kConfigScheme {
 	}
 }
 
-func (config *kConfigScheme) ParseConfig(hcl_options string, cfg_path string) error {
-	cfg := mconfig.NewConfigScheme()
+func (config *kConfigScheme) ParseConfig(cfg_path string) error {
+	// get the directory path of executable
+	execDir, err := getExecDirpath()
+	if err != nil {
+		return nil
+	}
 
-	if err := cfg.ParseConfig(hcl_options, cfg_path, config.configs); err != nil {
+	hcl_options, err := ioutil.ReadFile(execDir + "/" + KAOHI_HCLOPT_FNAME)
+	if err != nil {
+		return nil
+	}
+
+	cfg := mconfig.NewConfigScheme()
+	if err := cfg.ParseConfig(string(hcl_options), cfg_path, config.configs); err != nil {
 		cfg.PrintCmdLineHelp()
 		return err
 	}
-	fmt.Println("############################Parsing configuration ended")
 
 	return nil
 }

@@ -120,7 +120,7 @@ func main() {
 	}
 
 	// parse configuration file
-	if err = ctx.config.ParseConfig(KAOHI_HCL_OPTIONS, KAOHI_DEFAULT_CONFIG_FILE); err != nil {
+	if err = ctx.config.ParseConfig(KAOHI_DEFAULT_CONFIG_FILE); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
