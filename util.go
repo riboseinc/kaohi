@@ -51,6 +51,16 @@ func executablePath(name string) (string, error) {
 	return filepath.Abs(os.Args[0])
 }
 
+// get directory path of executable
+func getExecDirpath() (string, error) {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return "", err
+	}
+
+	return dir, err
+}
+
 // Check root rights to use system service
 func checkPrivileges() (bool, error) {
 	if output, err := exec.Command("id", "-g").Output(); err == nil {
