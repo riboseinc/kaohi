@@ -84,7 +84,7 @@ var mux sync.Mutex
 var kLogFile *os.File
 
 // init logger
-func InitLogger(dir_path string, level string) error {
+func InitLogger(dir_path string, level int) error {
 	// create log directory and set log file path
 	if os.MkdirAll(dir_path, 0755) != nil {
 		return ErrCreateLogDir

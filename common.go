@@ -48,6 +48,167 @@ const (
 	KAOHI_DEFAULT_SYSLOG_PROTO       = "tcp"
 )
 
+const (
+	KAOHI_HCL_OPTIONS = `cmdline "log_directory" {
+			type = "string"
+			switch {
+				short = "l"
+				long = "log-dir"
+			}
+
+			description {
+				short = "log directory"
+				long = "Specify the path of log directory"
+			}
+
+			env = "KAOHI_LOG_DIR"
+			config = "global.log_directory"
+		}
+
+		cmdline "log_level" {
+			type = "int"
+			switch {
+				short = "d"
+				long = "verbose"
+			}
+
+			description {
+				short = "verbose level (0 ~ 3)"
+				long = "Specify the verbose level"
+			}
+
+			env = "KAOHI_LOG_LEVEL"
+			config = "global.log_level"
+		}
+
+		cmdline "listen_address" {
+			type = "ipport"
+			switch {
+				short = "L"
+				long = "listen"
+			}
+
+			description = {
+				short = "IP:port"
+				long = "Specify the listening address for Kaohi console"
+			}
+
+			env = "KAOHI_LISTEN_ADDR"
+			config = "global.listen_address"
+		}
+
+		cmdline "cmd_interval" {
+			type = "int"
+			switch {
+				short = "i"
+				long = "interval"
+			}
+
+			description = {
+				short = "interval"
+				long = "Specify the interval for command execution"
+			}
+
+			env = "KAOHI_CMD_INTERVAL"
+			config = "commands.*.interval"
+		}
+
+		cmdline "cmd_uid" {
+			type = "int"
+			switch {
+				short = "u"
+				long = "user-id"
+			}
+
+			description = {
+				short = "user ID"
+				long = "Specify User ID for command execution"
+			}
+
+			env = "KAOHI_CMD_UID"
+			config = "commands.*.uid"
+		}
+
+		cmdline "cmd_files" {
+			type = "array"
+			switch {
+				short = "e"
+				long = "commands"
+			}
+
+			description = {
+				short = "commands"
+				long = "The list of commands to be executed"
+			}
+
+			env = "KAOHI_CMD_FILES"
+			config = "commands.*.files"
+		}
+
+		cmdline "rsyslog_listen" {
+			type = "ipport"
+			switch {
+				short = "r"
+				long = "rsyslog-listen"
+			}
+
+			description = {
+				short = "IP:port"
+				long = "Specify IP:port for rsyslog listening"
+			}
+
+			env = "KAOHI_RSYSLOG_LISTEN"
+			config = "rsyslog.listen_address"
+		}
+
+		cmdline "rsyslog_proto" {
+			type = "proto"
+			switch {
+				short = "p"
+				long = "rsyslog-proto"
+			}
+
+			description = {
+				short = "tcp|udp"
+				long = "Specify the protocol for rsyslog listening"
+			}
+
+			env = "KAOHI_RSYSLOG_PROTO"
+			config = "rsyslog.protocol"
+		}
+
+		cmdline "help" {
+			type = "bool"
+			switch {
+				short = "h"
+				long = "help"
+			}
+
+			description = {
+				short = ""
+				long = "Print help message"
+			}
+
+			helper = true
+		}
+
+		cmdline "config" {
+			type = "string"
+			switch {
+				short = "c"
+				long = "config"
+			}
+
+			description = {
+				short = "config file"
+				long = "Specify the configuration file"
+			}
+
+			env = "KAOHI_CONFIG"
+			override_cfg = true
+		}`
+)
+
 var (
 	ErrUnsupportedSystem = errors.New("Unsupported system")
 

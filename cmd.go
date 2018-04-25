@@ -383,7 +383,7 @@ func (this *Callback) OnMessage(c *Conn, p *CmdPacket) bool {
 	return true
 }
 
-func (this *Callback) OnClose(c *Conn) {2
+func (this *Callback) OnClose(c *Conn) {
 	fmt.Println("OnClose:", c.GetExtraData())
 }
 
@@ -394,7 +394,7 @@ func InitCmdListener(ctx *kContext) error {
 	DEBUG_INFO("Initializing command listener")
 
 	// create listener
-	listenAddr, err := net.ResolveTCPAddr("tcp4", ctx.config.listen_addr)
+	listenAddr, err := net.ResolveTCPAddr("tcp4", ctx.config.GetListenAddr())
 	if err != nil {
 		return ErrResolveAddr
 	}
@@ -404,7 +404,7 @@ func InitCmdListener(ctx *kContext) error {
 		return ErrListenFaield
 	}
 
-	DEBUG_INFO("Listening on %s", ctx.config.listen_addr)
+	DEBUG_INFO("Listening on %s", ctx.config.GetListenAddr())
 
 	// creates a server instance
 	config := &CmdConfig{
