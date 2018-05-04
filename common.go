@@ -32,7 +32,6 @@ import (
 // default option values
 const (
 	KAOHI_DEFAULT_CONFIG_FILE        = "/etc/kaohi.conf"
-	KAOHI_HCLOPT_FNAME               = "config.mel"
 
 	KAOHI_DEFAULT_LOG_DIR            = "/var/log/kaohi"
 	KAOHI_DEFAULT_LOG_LEVEL          = "NORMAL"
