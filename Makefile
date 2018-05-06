@@ -10,9 +10,10 @@ all: dependencies darwin
 
 dependencies:
 	GOPATH=${GOPATH} go get github.com/riboseinc/go-multiconfig
-	go generate
+	GOPATH=${GOPATH} go get github.com/riboseinc/go-multiconfig/genconfig
 
 darwin:
+	${GOPATH}/bin/genconfig -generate config.mel
 	GOPATH=${GOPATH} GOOS=darwin GOARCH=${GOARCH} go build -o bin/${KAOHI_DAEMON_BIN}-darwin-${GOARCH} ${KAOHI_DAEMON_GO_FILES}
 
 test: dependencies

@@ -32,8 +32,6 @@ import (
 	"syscall"
 )
 
-//go:generate go run gen_config.go
-
 // kaohi context structure
 type kContext struct {
 	config *kConfigScheme
