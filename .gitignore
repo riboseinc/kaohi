@@ -2,3 +2,4 @@
 .gopath
 bin/*
 tests/*
+config_mel.go
