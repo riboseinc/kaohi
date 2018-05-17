@@ -9,8 +9,8 @@ GOARCH = amd64
 all: dependencies darwin
 
 dependencies:
-	GOPATH=${GOPATH} go get github.com/riboseinc/go-multiconfig
-	GOPATH=${GOPATH} go get github.com/riboseinc/go-multiconfig/genconfig
+	GOPATH=${GOPATH} go get github.com/riboseinc/go-nereon
+	GOPATH=${GOPATH} go get github.com/riboseinc/go-nereon/genconfig
 
 darwin:
 	${GOPATH}/bin/genconfig -generate config.mel
