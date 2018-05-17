@@ -26,7 +26,7 @@
 package main
 
 import (
-	"github.com/riboseinc/go-multiconfig"
+	"github.com/riboseinc/go-nereon"
 )
 
 type kGlobalConfig struct {
